@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.form-control-input {
+  @apply w-full rounded-md border-zinc-300 focus:border-blue-500 focus:ring-blue-500 px-4 py-3 focus:outline-none border;
+}
+
+.card-pending {
+  @apply bg-blue-50 border-blue-200;
+}
+
+.card-in-progress {
+  @apply bg-yellow-50 border-yellow-200;
+}
+
+.card-done {
+  @apply bg-green-50 border-green-200;
+}
