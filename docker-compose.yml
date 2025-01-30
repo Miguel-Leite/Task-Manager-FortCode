@@ -14,9 +14,9 @@ services:
          - ./docker-compose/mysql:/docker-entrypoint-initdb.d/
       environment:
          MYSQL_ROOT_PASSWORD: rootpassword
-         MYSQL_DATABASE: taskmanager
-         MYSQL_USER: docker
-         MYSQL_PASSWORD: docker
+         MYSQL_DATABASE: ${DB_DATABASE:-taskmanager}
+         MYSQL_USER: ${DB_USERNAME:-docker}
+         MYSQL_PASSWORD: ${DB_PASSWORD:-docker}
       networks:
          - test-network
 
@@ -35,5 +35,4 @@ networks:
 
 volumes:
    dbmysql:
-   sail-redis:
       driver: local
