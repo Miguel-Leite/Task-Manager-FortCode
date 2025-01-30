@@ -17,6 +17,8 @@ Route::prefix('overview')->middleware([EnsureAuth::class,])->group(function () {
 Route::prefix('tasks')->group(function () {
   Route::get('/', [TaskController::class, 'index']);
   Route::post('/', [TaskController::class, 'store']);
+  Route::put('/{id}', [TaskController::class, 'update']);
+  Route::delete('/{id}', [TaskController::class, 'destroy']);
   Route::put('/{id}/status', [TaskController::class, 'updateStatus']);
 });
 

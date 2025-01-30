@@ -61,13 +61,11 @@ class TaskController extends Controller
       'title' => 'required|string|max:255',
       'description' => 'required|string',
       'deadline' => 'required|date',
-      'status' => 'required|in:PENDING,IN_PROGRESS,COMPLETED',
     ]);
 
     $task = Task::create([
       'title' => $request->title,
       'description' => $request->description,
-      'status' => $request->status,
       'deadline' => $request->deadline,
       'user_id' => $user->id,
     ]);
@@ -77,8 +75,8 @@ class TaskController extends Controller
     foreach ($users as $user) {
       $user->notify(new TaskCreatedNotification($task));
     }
-    Toaster::success('Task created successfully!');
-    return response()->json([$task]);
+    //Toaster::success('Task created successfully!');
+    return response()->json($task);
   }
 
   /**
@@ -86,13 +84,11 @@ class TaskController extends Controller
    */
   public function update(Request $request, $id)
   {
-
     $request->validate([
       'title' => 'required|string|max:255',
       'description' => 'required|string',
       'deadline' => 'required|date',
       'status' => 'required|in:PENDING,IN_PROGRESS,COMPLETED',
-      'user_id' => 'required|exists:users,id',
     ]);
 
     try {
@@ -101,10 +97,9 @@ class TaskController extends Controller
         $task->title = $request->title;
         $task->description = $request->description;
         $task->deadline = $request->deadline;
-        $task->status = $request->status;
         $task->save();
-        Toaster::success('Task updated successfully!');
-        return response()->json([$task]);
+        // Toaster::success('Task updated successfully!');
+        return response()->json($task);
       }
       return response()->json(['success' => false, 'message' => "Task not found."], 404);
     } catch (\Exception $e) {
@@ -119,10 +114,10 @@ class TaskController extends Controller
     ]);
     try {
       $task = Task::find($id);
-      if ($task->status) {
+      if ($task) {
         $task->status = $request->status;
         $task->save();
-        Toaster::success('Task created successfully!');
+        // Toaster::success('Task created successfully!');
         return response()->json(['success' => true, 'data' => $task]);
       }
       return response()->json(['success' => false, 'message' => "Task not found."], 404);
@@ -134,10 +129,18 @@ class TaskController extends Controller
   /**
    * Remove the specified resource from storage.
    */
-  public function destroy(Task $task)
+  public function destroy($id)
   {
 
-    $task->delete();
-    return redirect()->route('tasks.index')->with('success', 'Tarefa excluída com sucesso!');
+    try {
+      $task = Task::find($id);
+      if ($task) {
+        $task->delete();
+        return response()->json(['success' => true, 'data' => $task]);
+      }
+      return response()->json(['success' => false, 'message' => "Task not found."], 404);
+    } catch (\Exception $e) {
+      return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
   }
 }

@@ -4,11 +4,17 @@
   <div class="container mx-auto p-6" x-data="{
     columns: [],
     draggingTask: null,
+    open: false,
+    isEditing: false,
+    currentTask: null,
+    confirmDeleteModal: false,
+    taskToDelete: null,
 
     async init() {
       try {
         const response = await axios.get('/tasks');
         this.columns = response.data.columns;
+        console.log(this.columns)
       } catch (error) {
         console.error('Error loading tasks:', error);
       }
@@ -21,12 +27,12 @@
       try {
         const response = await axios.post('/tasks', formData);
 
-        const newTask = response.data.task;
+        const newTask = response.data;
 
         const column = this.columns.find(col => col.title === 'To Do');
+        console.log('newTask', newTask)
         column.tasks.push(newTask);
-
-        // Fechar o modal ou fazer outras ações
+        this.showToast('Task created successfully!', 'success');
         this.open = false;
 
       } catch (error) {
@@ -34,6 +40,70 @@
       }
     },
 
+    async updateTask(event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      formData.append('_method', 'PUT');
+      try {
+        const response = await axios.post(`/tasks/${this.currentTask.id}`, formData);
+
+        const updatedTask = response.data.task;
+
+        const column = this.columns.find(col => col.tasks.some(t => t.id === updatedTask.id));
+        const taskIndex = column.tasks.findIndex(t => t.id === updatedTask.id);
+        column.tasks[taskIndex] = updatedTask;
+        this.showToast('Task updated successfully!', 'success');
+        this.open = false;
+        resetForm()
+      } catch (error) {
+          console.error('Error updating task:', error);
+      }
+    },
+
+    openDeleteModal(task) {
+      this.taskToDelete = task;
+      this.confirmDeleteModal = true;
+    },
+
+    async deleteTask() {
+      if (!this.taskToDelete) return;
+
+      try {
+        await axios.delete(`/tasks/${this.taskToDelete.id}`);
+
+        const column = this.columns.find(col => col.tasks.some(t => t.id === this.taskToDelete.id));
+        column.tasks = column.tasks.filter(t => t.id !== this.taskToDelete.id);
+
+        this.showToast('Task deleted successfully!', 'success');
+      } catch (error) {
+        this.showToast('Error deleting task.', 'error');
+      } finally {
+        this.confirmDeleteModal = false;
+        this.taskToDelete = null;
+      }
+    },
+
+    showToast(message, type = 'success') {
+      Toastify({
+        text: message,
+        duration: 3000,
+        close: true,
+        gravity: 'top',
+        position: 'right',
+        backgroundColor: type === 'success' ? '#4CAF50' : '#F44336',
+      }).showToast();
+    },
+
+    editTask(task) {
+        this.isEditing = true;
+        this.currentTask = task;
+        this.open = true;
+    },
+
+    resetForm() {
+        this.isEditing = false;
+        this.currentTask = null;
+    },
 
     dragStart(task, columnTitle) {
       this.draggingTask = { task, fromColumn: columnTitle };
@@ -67,7 +137,6 @@
         });
       } catch (error) {
         console.error('Error updating task:', error);
-        // Rollback UI changes if backend update fails
         this.init();
       }
 
@@ -81,29 +150,58 @@
     @endif
     <div class="flex items-center justify-between mb-5">
       <h1 class="text-2xl font-bold mb-6">Tasks</h1>
-      <div x-data="{ open: false }">
-        <!-- Button to open modal -->
-        <button @click="open = true" class="flex items-center gap-3 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all">
-          <span>New task</span>
-        </button>
+      <div >
+      <!-- Button to open modal -->
+      <button @click="open = true" class="flex items-center gap-3 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all">
+        <span>New task</span>
+      </button>
 
-        <!-- Modal -->
-        <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
-          <div class="flex items-center justify-center min-h-screen px-4">
+      <!-- Modal -->
+      <div x-show="open" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4">
+          <!-- Overlay -->
+          <div class="fixed inset-0 bg-black opacity-30"></div>
+
+          <!-- Modal content -->
+          <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-medium" x-text="isEditing ? 'Edit Task' : 'Create New Task'"></h3>
+
+            </div>
+
+            @livewire('task-form')
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal  -->
+      <div x-show="confirmDeleteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4">
             <!-- Overlay -->
             <div class="fixed inset-0 bg-black opacity-30"></div>
 
             <!-- Modal content -->
             <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-medium">Create New Task</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium">Confirm Deletion</h3>
+                    <button @click="confirmDeleteModal = false; taskToDelete = null;" class="text-gray-500 hover:text-gray-700">
+                        &times;
+                    </button>
+                </div>
 
-              </div>
+                <p class="text-gray-600 mb-6">Are you sure you want to delete this task?</p>
 
-              @livewire('task-form')
+                <div class="flex justify-end gap-3">
+                    <button @click="confirmDeleteModal = false; taskToDelete = null;" class="px-4 py-2 text-sm font-medium text-zinc-700 bg-white border border-zinc-300 rounded-md hover:bg-zinc-50">
+                        Cancel
+                    </button>
+                    <button @click="deleteTask" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+                        Delete
+                    </button>
+                </div>
             </div>
-          </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -131,13 +229,13 @@
                 <div class="flex items-center justify-between gap-3">
                   <h3 class="font-semibold mb-2 text-sm line-clamp-1" x-text="task.title"></h3>
                   <div class="flex items-center gap-2">
-                    <button class="border-none bg-transparent">
+                    <button class="border-none bg-transparent" @click="editTask(task)">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M15.1306 4.19396C15.5648 4.01413 16.0301 3.92157 16.5 3.92157C16.9699 3.92157 17.4353 4.01413 17.8694 4.19396C18.3036 4.37379 18.698 4.63738 19.0303 4.96967C19.3626 5.30195 19.6262 5.69644 19.806 6.13059C19.9859 6.56475 20.0784 7.03007 20.0784 7.5C20.0784 7.96992 19.9859 8.43524 19.806 8.8694C19.6262 9.30356 19.3626 9.69804 19.0303 10.0303L8.53033 20.5303C8.38968 20.671 8.19891 20.75 8 20.75H4C3.58579 20.75 3.25 20.4142 3.25 20V16C3.25 15.8011 3.32902 15.6103 3.46967 15.4697L13.9697 4.96967C14.302 4.63738 14.6964 4.37379 15.1306 4.19396ZM16.5 5.42157C16.2271 5.42157 15.9568 5.47533 15.7046 5.57978C15.4525 5.68423 15.2233 5.83733 15.0303 6.03033L4.75 16.3107V19.25H7.68934L17.9697 8.96967C18.1627 8.77667 18.3158 8.54754 18.4202 8.29538C18.5247 8.04321 18.5784 7.77294 18.5784 7.5C18.5784 7.22705 18.5247 6.95678 18.4202 6.70462C18.3158 6.45245 18.1627 6.22333 17.9697 6.03033C17.7767 5.83733 17.5475 5.68423 17.2954 5.57978C17.0432 5.47533 16.7729 5.42157 16.5 5.42157Z" fill="#3D3D3D"/>
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M12.9697 5.96967C13.2626 5.67678 13.7374 5.67678 14.0303 5.96967L18.0303 9.96967C18.3232 10.2626 18.3232 10.7374 18.0303 11.0303C17.7374 11.3232 17.2626 11.3232 16.9697 11.0303L12.9697 7.03033C12.6768 6.73744 12.6768 6.26256 12.9697 5.96967Z" fill="#3D3D3D"/>
                         </svg>
                     </button>
-                    <button class="border-none bg-transparent">
+                    <button @click="openDeleteModal(task)" class="border-none bg-transparent">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M3.25 7C3.25 6.58579 3.58579 6.25 4 6.25H20C20.4142 6.25 20.75 6.58579 20.75 7C20.75 7.41421 20.4142 7.75 20 7.75H4C3.58579 7.75 3.25 7.41421 3.25 7Z" fill="#3D3D3D"/>
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M10 10.25C10.4142 10.25 10.75 10.5858 10.75 11V17C10.75 17.4142 10.4142 17.75 10 17.75C9.58579 17.75 9.25 17.4142 9.25 17V11C9.25 10.5858 9.58579 10.25 10 10.25Z" fill="#3D3D3D"/>
