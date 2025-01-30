@@ -19,9 +19,21 @@ class AdminUserSeeder extends Seeder
       'password' => bcrypt('password'),
     ]);
 
-    $role = Role::create(['name' => 'super-admin']);
+    $employee = User::create([
+      'name' => 'Miguel',
+      'email' => 'miguel@gmail.com',
+      'password' => bcrypt('password'),
+    ]);
+
+    $role = Role::findOrCreate('super-admin');
     $role->givePermissionTo(['create tasks', 'edit tasks', 'delete tasks', 'view tasks', 'create users', 'edit users', 'delete users', 'view users']);
 
+
     $admin->assignRole($role);
+
+    $role = Role::findOrCreate('employee');
+    $role->givePermissionTo(['edit tasks']);
+
+    $employee->assignRole($role);
   }
 }

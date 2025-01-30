@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\TaskCreatedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Masmerise\Toaster\Toaster;
 
 class TaskController extends Controller
@@ -47,7 +48,13 @@ class TaskController extends Controller
    */
   public function create()
   {
-    return view('tasks');
+    $user = auth()->guard()->user();
+    $permissions = [
+      'create_tasks' => $user->can('create tasks'),
+      'edit_tasks' => $user->can('edit tasks'),
+      'delete_tasks' => $user->can('delete tasks'),
+    ];
+    return view('tasks', compact('permissions'));
   }
 
   /**
@@ -55,6 +62,7 @@ class TaskController extends Controller
    */
   public function store(Request $request)
   {
+    Gate::authorize('create tasks');
     $user = auth()->guard('web')->user();
 
     $request->validate([
@@ -92,6 +100,7 @@ class TaskController extends Controller
     ]);
 
     try {
+      Gate::authorize('edit tasks');
       $task = Task::find($id);
       if ($task->status) {
         $task->title = $request->title;
@@ -113,6 +122,7 @@ class TaskController extends Controller
       'status' => 'required|in:PENDING,IN_PROGRESS,COMPLETED',
     ]);
     try {
+      Gate::authorize('edit tasks');
       $task = Task::find($id);
       if ($task) {
         $task->status = $request->status;
@@ -131,8 +141,8 @@ class TaskController extends Controller
    */
   public function destroy($id)
   {
-
     try {
+      Gate::authorize('delete tasks');
       $task = Task::find($id);
       if ($task) {
         $task->delete();

@@ -17,3 +17,7 @@
 .card-done {
   @apply bg-green-50 border-green-200;
 }
+
+.button-primary {
+  @apply flex items-center gap-3 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all;
+}

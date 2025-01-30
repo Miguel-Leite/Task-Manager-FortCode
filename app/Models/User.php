@@ -46,4 +46,37 @@ class User extends Authenticatable
       'password' => 'hashed',
     ];
   }
+
+  public function getRoleAttribute()
+  {
+    $allPermissions = Permission::all();
+
+    $userRoles = $this->roles()->with('permissions')->get();
+
+    $userPermissions = $userRoles->flatMap(function ($role) {
+      return $role->permissions;
+    })->pluck('id')->unique();
+
+    $permissionsGrouped = $allPermissions->map(function ($permission) use ($userPermissions) {
+      return [
+        'id' => $permission->id,
+        'name' => $permission->name,
+        'hasPermission' => $userPermissions->contains($permission->id),
+      ];
+    });
+
+    $rolesWithPermissions = $userRoles->map(function ($role) use ($permissionsGrouped) {
+      return [
+        'id' => $role->id,
+        'name' => $role->name,
+        'permissions' => [
+          'hasPermission' => $permissionsGrouped->pluck('hasPermission')->contains(true),
+          'details' => $permissionsGrouped,
+        ],
+      ];
+    });
+
+    return $rolesWithPermissions->first();
+  }
+
 }

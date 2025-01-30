@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsureAuth;
 use App\Http\Middleware\EnsureUnAuth;
 use Illuminate\Support\Facades\Route;
@@ -10,8 +11,10 @@ Route::get('/', [AuthController::class, 'index'])->middleware(EnsureUnAuth::clas
 Route::post('/', [AuthController::class, 'login'])->name('auth.login');
 Route::get('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
-Route::prefix('overview')->middleware([EnsureAuth::class,])->group(function () {
-  Route::get('/', [TaskController::class, 'create'])->name('tasks.index');
+Route::middleware([EnsureAuth::class,])->group(function () {
+  Route::get('/users', [UserController::class, 'index'])->name('users.index');
+  Route::delete('/users/{id}', [UserController::class, 'index'])->name('users.delete');
+  Route::get('/overview', [TaskController::class, 'create'])->name('tasks.index');
 });
 
 Route::prefix('tasks')->group(function () {
